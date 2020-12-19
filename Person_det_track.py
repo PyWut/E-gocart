@@ -61,7 +61,6 @@ def get_dist():
           end_time = time.time()      
           
         dist = round((end_time - start_time) / 2 * SPEED, 2)
-        print("test")
         time.sleep(1)
 
 def find_id_to_track(boxes, center_x_cam):
@@ -327,9 +326,8 @@ if __name__ == "__main__":
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
         except:
-            print("test2")
             break
-    print("test3")
+
     GPIO.cleanup()
     cam.close()
     cv2.destroyAllWindows()
