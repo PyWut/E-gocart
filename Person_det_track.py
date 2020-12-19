@@ -1,14 +1,9 @@
-# -*- coding: utf-8 -*-
-"""@author: ambakick
-"""
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
-#from moviepy.editor import VideoFileClip
 from collections import deque
 from scipy.optimize import linear_sum_assignment as linear_assignment
-#from sklearn.utils.linear_assignment_ import linear_assignment
-
+from threading import Thread
 import helpers
 import detector
 import tracker
@@ -44,6 +39,31 @@ id_to_track = None
 LED1 = 16
 LED2 = 18
 
+# ultrasonic sensor
+TRIG = 22
+ECHO = 11
+SPEED = 34300
+dist = 0
+
+CENTER_X_CAM = 320
+
+def get_dist():
+    global dist
+    while True:
+        GPIO.output(TRIG, True)
+        time.sleep(0.00001)
+        GPIO.output(TRIG, False)
+
+        while GPIO.input(ECHO)==0:
+          start_time = time.time()
+
+        while GPIO.input(ECHO)==1:
+          end_time = time.time()      
+          
+        dist = round((end_time - start_time) / 2 * SPEED, 2)
+        print("test")
+        time.sleep(1)
+
 def find_id_to_track(boxes, center_x_cam):
     ids = [int(box.id) for box in boxes]
     boxes_center_x = [int((box.box[1] + box.box[3]) / 2) for box in boxes]
@@ -55,6 +75,7 @@ def find_id_to_track(boxes, center_x_cam):
     return ids[offsets.index(min_offset)], x_to_track
 
 def motor(x):
+    print(dist)
     if x != None:
         led1_active = GPIO.input(LED1)
         led2_active = GPIO.input(LED2)
@@ -258,6 +279,8 @@ if __name__ == "__main__":
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(LED1, GPIO.OUT)
     GPIO.setup(LED2, GPIO.OUT)
+    GPIO.setup(TRIG, GPIO.OUT)
+    GPIO.setup(ECHO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     
     cam = PiCamera()
     cam.resolution = (640, 480)
@@ -273,47 +296,40 @@ if __name__ == "__main__":
     time.sleep(0.1)
     
     det = detector.PersonDetector()
+        
+    # start=time.time()
+    # output = 'test_v7.mp4'
+    # clip1 = VideoFileClip("project_video.mp4")#.subclip(4,49) # The first 8 seconds doesn't have any cars...
+    # clip = clip1.fl_image(pipeline)
+    # clip.write_videofile(output, audio=False)
+    # end  = time.time()
     
-    if debug: # test on a sequence of images
-        images = [plt.imread(file) for file in glob.glob('./test_images/*.jpg')]
+    #fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    #out = cv2.VideoWriter('output.avi',fourcc, 8.0, (640,480))
+    
+    dist_thread = Thread(target=get_dist)
+    dist_thread.daemon = True
+    dist_thread.start()
+    
         
-        for i in range(len(images))[0:7]:
-             image = images[i]
-             image_box = pipeline(image)   
-             plt.imshow(image_box)
-             plt.show()
-           
-    else: # test on a video file.
-        
-        # start=time.time()
-        # output = 'test_v7.mp4'
-        # clip1 = VideoFileClip("project_video.mp4")#.subclip(4,49) # The first 8 seconds doesn't have any cars...
-        # clip = clip1.fl_image(pipeline)
-        # clip.write_videofile(output, audio=False)
-        # end  = time.time()
-        CENTER_X_CAM = 320
-        
-        #fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        #out = cv2.VideoWriter('output.avi',fourcc, 8.0, (640,480))
-        
+    for frame in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+        try:
+            img = frame.array
+            cv2.imshow("frame", img)
             
-        for frame in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-            try:
-                img = frame.array
-                cv2.imshow("frame", img)
-                
-                np.asarray(img)
-                new_img = pipeline(img)
+            np.asarray(img)
+            new_img = pipeline(img)
 
-                #out.write(new_img)
-                #clear stream
-                rawCapture.truncate(0)
+            #out.write(new_img)
+            #clear stream
+            rawCapture.truncate(0)
 
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    break
-            except:
+            if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
-        
-        GPIO.cleanup()
-        cam.close()
-        cv2.destroyAllWindows()
+        except:
+            print("test2")
+            break
+    print("test3")
+    GPIO.cleanup()
+    cam.close()
+    cv2.destroyAllWindows()
