@@ -77,7 +77,6 @@ class Model:
         self.input_std = 127.5
     
     def resize(self, frame):
-        self.frame = frame
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (self.width, self.height))
         input_data = np.expand_dims(frame_resized, axis=0)
@@ -90,7 +89,7 @@ class Model:
         self.classes = self.interpreter.get_tensor(self.output_details[1]['index'])[0] # Class index of detected objects
         self.scores = self.interpreter.get_tensor(self.output_details[2]['index'])[0] # Confidence of detected objects
     
-    def get_persons(self, draw):
+    def get_persons(self):
         persons = []
         for i in range(len(self.scores)):
             if ((self.scores[i] > min_det_threshold) and (self.scores[i] <= 1.0)):
@@ -104,22 +103,11 @@ class Model:
                     xmax = int(min(imW,(self.boxes[i][3] * imW)))       # right x
                     
                     persons.append(np.array([ymin, xmin, ymax, xmax]))
-                    
-                    """
-                    if draw:
-                        cv2.rectangle(self.frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
-                        label = f"{object_name}: {int(self.scores[i]*100)}" # Example: 'person: 72%'
-                        labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
-                        label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
-                        cv2.rectangle(self.frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
-                        cv2.putText(self.frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
-                        cv2.circle(self.frame, (int((persons[0][1] + persons[0][3]) / 2), int((persons[0][0] + persons[0][2]) / 2)), 10,(0, 0, 255), 2)
-                    """
         return persons
     
     def get_output(self, frame):
         self.detect(self.resize(frame))
-        return self.get_persons(draw=True)
+        return self.get_persons()
 
 
 def get_dist():
