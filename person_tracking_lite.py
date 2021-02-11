@@ -16,6 +16,16 @@ from tflite_runtime.interpreter import Interpreter
 import os
 import logging
 logging.basicConfig(level=logging.ERROR)
+import pigpio
+from servo import change_duty
+
+
+# servo
+# equation used: y = 150x + 28333
+SERVO = 12
+pwm = pigpio.pi()
+pwm.set_mode(SERVO, pigpio.OUTPUT)
+pwm.set_PWM_frequency(SERVO, 50)
 
 # Global variables to be used by functions of VideoFileClop
 frame_count = 0 # frame counter
@@ -139,23 +149,10 @@ def find_id_to_track(boxes, center_x_cam):
 def motor(x):
     print(dist)
     if x != None:
-        led1_active = GPIO.input(LED1)
-        led2_active = GPIO.input(LED2)
-        # right
-        if x >= CENTER_X_CAM:
-            if led2_active:
-                GPIO.output(LED2, False)
-            if not led1_active:
-                GPIO.output(LED1, True)
-        # left
-        else:
-            if led1_active:
-                GPIO.output(LED1, False)
-            if not led2_active:
-                GPIO.output(LED2, True)
-    else:
-        GPIO.output(LED1, False)
-        GPIO.output(LED2, False)
+        duty = (lambda x: 150*x + 28333)(x)
+        if duty > 124000:
+            duty = 124000
+        change_duty(duty)
 
 def assign_detections_to_trackers(trackers, detections, iou_thrd = 0.3):
     '''
@@ -393,7 +390,9 @@ if __name__ == "__main__":
         except Exception as e:
             print(str(repr(e)))
             break
-
+    
+    change_duty(0)
+    pwm.stop()
     GPIO.cleanup()
     cam.close()
     cv2.destroyAllWindows()
