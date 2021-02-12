@@ -154,6 +154,8 @@ def motor(x):
             duty = (lambda x: 150*x + 28333)(x)
             if duty > 124000:
                 duty = 124000
+            elif duty < 28000:
+                duty = 28000
             change_duty(duty)
             stored_x = x
 
