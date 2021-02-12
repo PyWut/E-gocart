@@ -26,6 +26,13 @@ SERVO = 12
 pwm = pigpio.pi()
 pwm.set_mode(SERVO, pigpio.OUTPUT)
 pwm.set_PWM_frequency(SERVO, 50)
+""" 
+stored x is used to ignore small adjustments for the servo
+SERVO_THRESHOLD is the minimum amount of pixel difference between the current and the previous x coord necessary to make the servo move
+"""
+stored_x = 0
+SERVO_THRESHOLD = 30
+
 
 # Global variables to be used by functions of VideoFileClop
 frame_count = 0 # frame counter
@@ -59,20 +66,14 @@ dist = 0
 CENTER_X_CAM = 320
 
 # tflite model interpreter
-MODEL_NAME = "/home/pi/Desktop/tflite/obj_det_model"
-GRAPH_NAME = "/home/pi/Desktop/tflite/obj_det_model/ssd_mobilenet.tflite"
-LABELMAP_NAME = "/home/pi/Desktop/tflite/obj_det_model/ssd_mobilenet.txt"
 min_det_threshold = 0.55
 imW, imH = 640, 480
-CWD_PATH = os.getcwd()
-PATH_TO_CKPT = os.path.join(CWD_PATH,MODEL_NAME,GRAPH_NAME)
-PATH_TO_LABELS = os.path.join(CWD_PATH,MODEL_NAME,LABELMAP_NAME)
+MODEL_DIR = f"{os.path.abspath(os.path.dirname(__file__))}/obj_det_model"
+PATH_TO_CKPT = f"{MODEL_DIR}/ssd_mobilenet.tflite"
+PATH_TO_LABELS = f"{MODEL_DIR}/ssd_mobilenet.txt"
 
 with open(PATH_TO_LABELS, 'r') as f:
     labels = [line.strip() for line in f.readlines()]
-
-if labels[0] == '???':
-    del(labels[0])
 
 
 class Model:
@@ -83,8 +84,6 @@ class Model:
         self.output_details = self.interpreter.get_output_details()
         self.height = self.input_details[0]['shape'][1]
         self.width = self.input_details[0]['shape'][2]
-        self.input_mean = 127.5
-        self.input_std = 127.5
     
     def resize(self, frame):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -147,12 +146,16 @@ def find_id_to_track(boxes, center_x_cam):
     return ids[offsets.index(min_offset)], x_to_track
 
 def motor(x):
-    print(dist)
+    global stored_x
+    print(f"Distance: {dist}cm")
     if x != None:
-        duty = (lambda x: 150*x + 28333)(x)
-        if duty > 124000:
-            duty = 124000
-        change_duty(duty)
+        if abs(x - stored_x) >= SERVO_THRESHOLD:
+            print(f"Difference: {abs(x - stored_x)}")
+            duty = (lambda x: 150*x + 28333)(x)
+            if duty > 124000:
+                duty = 124000
+            change_duty(duty)
+            stored_x = x
 
 def assign_detections_to_trackers(trackers, detections, iou_thrd = 0.3):
     '''
@@ -248,7 +251,7 @@ def pipeline(img, boxes):
                 # trk.box layout [y_up, x_left, y_down, x_right]
                 x_to_track = int((trk.box[1] + trk.box[3])/2)
                 #center_y = int((trk.box[0] + trk.box[2])/2)
-                #cv2.circle(img, (center_x, center_y), 10, (255,0,0), 5)
+                #cv2.circle(img, (x_to_track, 200), 10, (255,0,0), 5)
         #print(f"ID to track : {id_to_track}\nX to track : {x_to_track}")
         motor(x_to_track)
     else:
