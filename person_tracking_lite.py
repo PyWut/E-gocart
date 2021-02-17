@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import glob
 from collections import deque
 from scipy.optimize import linear_sum_assignment as linear_assignment
 from threading import Thread
@@ -17,22 +15,18 @@ import os
 import logging
 logging.basicConfig(level=logging.ERROR)
 import pigpio
-from servo import change_duty
+from servo import *
 
-
-# servo
-# equation used: y = 150x + 28333
-SERVO = 12
-pwm = pigpio.pi()
-pwm.set_mode(SERVO, pigpio.OUTPUT)
-pwm.set_PWM_frequency(SERVO, 50)
 """ 
+servo
+equation used: y = -147*x + 122667
 stored x is used to ignore small adjustments for the servo
 SERVO_THRESHOLD is the minimum amount of pixel difference between the current and the previous x coord necessary to make the servo move
 """
 stored_x = 0
 SERVO_THRESHOLD = 30
-
+MAX_DUTY = 122000
+MIN_DUTY = 28000
 
 # Global variables to be used by functions of VideoFileClop
 frame_count = 0 # frame counter
@@ -62,6 +56,7 @@ TRIG = 22
 ECHO = 11
 SPEED = 34300
 dist = 0
+stop_measure = False
 
 CENTER_X_CAM = 320
 
@@ -69,7 +64,7 @@ CENTER_X_CAM = 320
 min_det_threshold = 0.55
 imW, imH = 640, 480
 MODEL_DIR = f"{os.path.abspath(os.path.dirname(__file__))}/obj_det_model"
-PATH_TO_CKPT = f"{MODEL_DIR}/ssd_mobilenet.tflite"
+PATH_TO_TFLITE = f"{MODEL_DIR}/ssd_mobilenet.tflite"
 PATH_TO_LABELS = f"{MODEL_DIR}/ssd_mobilenet.txt"
 
 with open(PATH_TO_LABELS, 'r') as f:
@@ -121,7 +116,8 @@ class Model:
 
 def get_dist():
     global dist
-    while True:
+    global stop_measure
+    while not stop_measure:
         GPIO.output(TRIG, True)
         time.sleep(0.00001)
         GPIO.output(TRIG, False)
@@ -147,15 +143,14 @@ def find_id_to_track(boxes, center_x_cam):
 
 def motor(x):
     global stored_x
-    print(f"Distance: {dist}cm")
     if x != None:
         if abs(x - stored_x) >= SERVO_THRESHOLD:
             print(f"Difference: {abs(x - stored_x)}")
-            duty = (lambda x: 150*x + 28333)(x)
-            if duty > 124000:
-                duty = 124000
-            elif duty < 28000:
-                duty = 28000
+            duty = (lambda x: -147*x + 122667)(x)
+            if duty > MAX_DUTY:
+                duty = MAX_DUTY
+            elif duty < MIN_DUTY:
+                duty = MIN_DUTY
             change_duty(duty)
             stored_x = x
 
@@ -360,7 +355,7 @@ if __name__ == "__main__":
     #warm up camera
     time.sleep(0.1)
     
-    model = Model(path_to_model=PATH_TO_CKPT)
+    model = Model(path_to_model=PATH_TO_TFLITE)
         
     # start=time.time()
     # output = 'test_v7.mp4'
@@ -390,14 +385,17 @@ if __name__ == "__main__":
             #clear stream
             rawCapture.truncate(0)
 
+            print(f"Distance: {dist}cm")
+
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
         except Exception as e:
             print(str(repr(e)))
             break
     
+    stop_measure = True
     change_duty(0)
     pwm.stop()
-    GPIO.cleanup()
     cam.close()
     cv2.destroyAllWindows()
+    GPIO.cleanup()
