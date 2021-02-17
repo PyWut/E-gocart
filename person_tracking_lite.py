@@ -18,7 +18,7 @@ import pigpio
 from servo import *
 
 """ 
-servo
+servo variables
 equation used: y = -147*x + 122667
 stored x is used to ignore small adjustments for the servo
 SERVO_THRESHOLD is the minimum amount of pixel difference between the current and the previous x coord necessary to make the servo move
