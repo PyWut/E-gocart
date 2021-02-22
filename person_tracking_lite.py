@@ -335,8 +335,6 @@ def pipeline(img, boxes):
     
 if __name__ == "__main__":    
     GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(LED1, GPIO.OUT)
-    GPIO.setup(LED2, GPIO.OUT)
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(ECHO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     
