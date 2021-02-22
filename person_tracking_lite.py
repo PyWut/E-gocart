@@ -48,9 +48,6 @@ debug = False
 
 id_to_track = None
 
-LED1 = 16
-LED2 = 18
-
 # ultrasonic sensor
 TRIG = 22
 ECHO = 11
@@ -146,6 +143,7 @@ def motor(x):
     if x != None:
         if abs(x - stored_x) >= SERVO_THRESHOLD:
             print(f"Difference: {abs(x - stored_x)}")
+            # pixels to duty
             duty = (lambda x: -147*x + 122667)(x)
             if duty > MAX_DUTY:
                 duty = MAX_DUTY
