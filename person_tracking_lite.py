@@ -138,7 +138,7 @@ def find_id_to_track(boxes, center_x_cam):
     x_to_track = boxes_center_x[offsets.index(min_offset)]
     return ids[offsets.index(min_offset)], x_to_track
 
-def motor(x):
+def servo(x):
     global stored_x
     if x != None:
         if abs(x - stored_x) >= SERVO_THRESHOLD:
@@ -248,7 +248,7 @@ def pipeline(img, boxes):
                 #center_y = int((trk.box[0] + trk.box[2])/2)
                 #cv2.circle(img, (x_to_track, 200), 10, (255,0,0), 5)
         #print(f"ID to track : {id_to_track}\nX to track : {x_to_track}")
-        motor(x_to_track)
+        servo(x_to_track)
     else:
         id_to_track = None
     
