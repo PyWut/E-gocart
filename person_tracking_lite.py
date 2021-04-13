@@ -48,9 +48,6 @@ debug = False
 
 id_to_track = None
 
-LED1 = 16
-LED2 = 18
-
 # ultrasonic sensor
 TRIG = 22
 ECHO = 11
@@ -238,9 +235,10 @@ def pipeline(img, boxes):
     
     if len(tracker_list) > 0:
         x_to_track = None
-        if id_to_track == None or id_to_track not in tracker_list:
+        tracker_list_ids = [int(tracker.id) for tracker in tracker_list]
+        if id_to_track == None or id_to_track not in tracker_list_ids:
             id_to_track, x_to_track = find_id_to_track(tracker_list, CENTER_X_CAM)
-            print(id_to_track)
+            print(f"Tracking number: {id_to_track}")
         
         for trk in tracker_list:
             x_box.append(trk.box)
@@ -337,8 +335,6 @@ def pipeline(img, boxes):
     
 if __name__ == "__main__":    
     GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(LED1, GPIO.OUT)
-    GPIO.setup(LED2, GPIO.OUT)
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(ECHO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     
