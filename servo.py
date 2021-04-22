@@ -3,7 +3,6 @@ import pigpio
 SERVO = 12
 pwm = pigpio.pi()
 pwm.set_mode(SERVO, pigpio.OUTPUT)
-pwm.set_PWM_frequency(SERVO, 50)
 
 # duty from 28000 to 122000 and center is 77000
 def change_duty(duty):
