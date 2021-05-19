@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 from time import sleep
 import os
-sleep(10)
+#sleep(10)
 
 DIR = 18
 PWM = 23
@@ -32,12 +32,12 @@ GPIO.cleanup()
 
 duty = 0
 while duty < 100:
-    duty += 1
+    duty += 10
     speed.ChangeDutyCycle(duty)
     sleep(0.1)
 sleep(3)
 while duty > 0:
-    duty -= 1
+    duty -= 10
     speed.ChangeDutyCycle(duty)
     sleep(0.1)
 
