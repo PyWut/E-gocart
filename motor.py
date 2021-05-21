@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 from time import sleep
 import os
-#sleep(10)
+from relay import DualRelay
 
 DIR = 18
 PWM = 23
@@ -34,12 +34,12 @@ duty = 0
 while duty < 100:
     duty += 10
     speed.ChangeDutyCycle(duty)
-    sleep(0.1)
-sleep(3)
+    sleep(0.5)
+sleep(1)
 while duty > 0:
     duty -= 10
     speed.ChangeDutyCycle(duty)
-    sleep(0.1)
+    sleep(0.5)
 
 speed.stop()
 GPIO.cleanup()

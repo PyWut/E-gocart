@@ -21,25 +21,10 @@ class DualRelay:
 if __name__ == "__main__":
 	relay1 = 29
 	relay2 = 31
-	"""
-	DIR = 12
-	PWM = 16
-	"""
 	GPIO.setmode(GPIO.BOARD)
 	steering = DualRelay(relay1, relay2, None, None)
-	"""
-	GPIO.setup(DIR, GPIO.OUT)
-	GPIO.setup(PWM, GPIO.OUT)
-	speed = GPIO.PWM(PWM, 50)
-	GPIO.output(DIR, True)
-	speed.start(0)
-	speed.ChangeDutyCycle(20)
-	"""
-	#steering.right(6)
+	steering.right(5)
 	sleep(1)
-	#speed.ChangeDutyCycle(50)
-	steering.left(2)
+	steering.r(5)
 	sleep(1)
-	#speed.ChangeDutyCycle(0)
-	#speed.stop()
 	GPIO.cleanup()
