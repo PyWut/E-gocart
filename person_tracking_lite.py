@@ -15,18 +15,6 @@ import os
 import logging
 logging.basicConfig(level=logging.ERROR)
 import pigpio
-from servo import *
-
-""" 
-servo variables
-equation used: y = -147*x + 122667
-stored x is used to ignore small adjustments for the servo
-SERVO_THRESHOLD is the minimum amount of pixel difference between the current and the previous x coord necessary to make the servo move
-"""
-stored_x = 0
-SERVO_THRESHOLD = 30
-MAX_DUTY = 122000
-MIN_DUTY = 28000
 
 # Global variables to be used by functions of VideoFileClop
 frame_count = 0 # frame counter
@@ -138,20 +126,6 @@ def find_id_to_track(boxes, center_x_cam):
     x_to_track = boxes_center_x[offsets.index(min_offset)]
     return ids[offsets.index(min_offset)], x_to_track
 
-def servo(x):
-    global stored_x
-    if x != None:
-        if abs(x - stored_x) >= SERVO_THRESHOLD:
-            print(f"Difference: {abs(x - stored_x)}")
-            # pixels to duty
-            duty = (lambda x: -147*x + 122667)(x)
-            if duty > MAX_DUTY:
-                duty = MAX_DUTY
-            elif duty < MIN_DUTY:
-                duty = MIN_DUTY
-            change_duty(duty)
-            stored_x = x
-
 def assign_detections_to_trackers(trackers, detections, iou_thrd = 0.3):
     '''
     From current list of trackers and new detections, output matched detections,
@@ -249,7 +223,6 @@ def pipeline(img, boxes):
                 #center_y = int((trk.box[0] + trk.box[2])/2)
                 #cv2.circle(img, (x_to_track, 200), 10, (255,0,0), 5)
         #print(f"ID to track : {id_to_track}\nX to track : {x_to_track}")
-        servo(x_to_track)
     else:
         id_to_track = None
     
@@ -344,8 +317,8 @@ if __name__ == "__main__":
     cam.framerate = 30
 
     # flip vertical and horizontal
-    cam.vflip = True
-    cam.hflip = True
+    cam.vflip = False
+    cam.hflip = False
 
     rawCapture = PiRGBArray(cam, size=(imW, imH))
 
@@ -391,8 +364,6 @@ if __name__ == "__main__":
             break
     
     stop_measure = True
-    change_duty(0)
-    pwm.stop()
     cam.close()
     cv2.destroyAllWindows()
     GPIO.cleanup()
