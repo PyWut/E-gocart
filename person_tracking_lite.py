@@ -14,7 +14,10 @@ from tflite_runtime.interpreter import Interpreter
 import os
 import logging
 logging.basicConfig(level=logging.ERROR)
-import pigpio
+from relay import DualRelay
+
+RELAY1 = 29
+RELAY2 = 31
 
 # Global variables to be used by functions of VideoFileClop
 frame_count = 0 # frame counter
@@ -222,7 +225,10 @@ def pipeline(img, boxes):
                 x_to_track = int((trk.box[1] + trk.box[3])/2)
                 #center_y = int((trk.box[0] + trk.box[2])/2)
                 #cv2.circle(img, (x_to_track, 200), 10, (255,0,0), 5)
-        #print(f"ID to track : {id_to_track}\nX to track : {x_to_track}")
+                #print(f"ID to track : {id_to_track}\nX to track : {x_to_track}")
+                
+                steering.update(x_to_track)
+                print(steering.track_pos)
     else:
         id_to_track = None
     
@@ -311,6 +317,7 @@ if __name__ == "__main__":
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(ECHO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    steering = DualRelay(RELAY1, RELAY2, max_turning_time=5, delay=1)
     
     cam = PiCamera()
     cam.resolution = (imW, imH)
@@ -355,7 +362,7 @@ if __name__ == "__main__":
             #clear stream
             rawCapture.truncate(0)
 
-            print(f"Distance: {dist}cm")
+            #print(f"Distance: {dist}cm")
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
