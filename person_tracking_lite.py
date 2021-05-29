@@ -15,6 +15,9 @@ import os
 import logging
 logging.basicConfig(level=logging.ERROR)
 from relay import DualRelay
+from motor import Motor
+
+shutting_down = False
 
 RELAY1 = 29
 RELAY2 = 31
@@ -117,7 +120,11 @@ def get_dist():
           end_time = time.time()      
           
         dist = round((end_time - start_time) / 2 * SPEED, 2)
+        if dist < 90:
+            motor.speed.ChangeDutyCycle(0)
+            steering.stop()
         time.sleep(1)
+
 
 def find_id_to_track(boxes, center_x_cam):
     ids = [int(box.id) for box in boxes]
@@ -177,8 +184,6 @@ def assign_detections_to_trackers(trackers, detections, iou_thrd = 0.3):
         matches = np.concatenate(matches,axis=0)
     
     return matches, np.array(unmatched_detections), np.array(unmatched_trackers)       
-    
-
 
 def pipeline(img, boxes):
     '''
@@ -200,47 +205,35 @@ def pipeline(img, boxes):
     # no person detected
     if len(z_box) == 0:
         id_to_track = None
-
-    if debug:
-       print('Frame:', frame_count)
        
     x_box =[]
-    if debug: 
-        for i in range(len(z_box)):
-           img1= helpers.draw_box_label(img, z_box[i], box_color=(255, 0, 0))
-           plt.imshow(img1)
-        plt.show()
     
     if len(tracker_list) > 0:
         x_to_track = None
         tracker_list_ids = [int(tracker.id) for tracker in tracker_list]
         if id_to_track == None or id_to_track not in tracker_list_ids:
             id_to_track, x_to_track = find_id_to_track(tracker_list, CENTER_X_CAM)
-            print(f"Tracking number: {id_to_track}")
         
         for trk in tracker_list:
             x_box.append(trk.box)
             if int(trk.id) == id_to_track:
                 # trk.box layout [y_up, x_left, y_down, x_right]
+
                 x_to_track = int((trk.box[1] + trk.box[3])/2)
+                
                 #center_y = int((trk.box[0] + trk.box[2])/2)
                 #cv2.circle(img, (x_to_track, 200), 10, (255,0,0), 5)
                 #print(f"ID to track : {id_to_track}\nX to track : {x_to_track}")
-                
+                motor.update(box=trk.box,pos=steering.track_pos["current_pos"])
                 steering.update(x_to_track)
-                print(steering.track_pos)
     else:
+        motor.speed.ChangeDutyCycle(0)
+        steering.stop()
         id_to_track = None
     
     
     matched, unmatched_dets, unmatched_trks \
     = assign_detections_to_trackers(x_box, z_box, iou_thrd = 0.3)  
-    if debug:
-         print('Detection: ', z_box)
-         print('x_box: ', x_box)
-         print('matched:', matched)
-         print('unmatched_det:', unmatched_dets)
-         print('unmatched_trks:', unmatched_trks)
     
          
     # Deal with matched detections     
@@ -270,7 +263,6 @@ def pipeline(img, boxes):
             xx =[xx[0], xx[2], xx[4], xx[6]]
             tmp_trk.box = xx
             tmp_trk.id = track_id_list.popleft() # assign an ID for the tracker
-            #print(tmp_trk.id)
             tracker_list.append(tmp_trk)
             x_box.append(xx)
     
@@ -293,10 +285,7 @@ def pipeline(img, boxes):
         if ((trk.hits >= min_hits) and (trk.no_losses <=max_age)):
              good_tracker_list.append(trk)
              x_cv2 = trk.box
-             if debug:
-                 print('updated box: ', x_cv2)
-                 print()
-             img= helpers.draw_box_label(trk.id,img, x_cv2) # Draw the bounding boxes on the 
+             #img = helpers.draw_box_label(trk.id,img, x_cv2) # Draw the bounding boxes on the 
                                              # images
     # Book keeping
     deleted_tracks = filter(lambda x: x.no_losses > max_age, tracker_list)  
@@ -306,18 +295,17 @@ def pipeline(img, boxes):
     
     tracker_list = [x for x in tracker_list if x.no_losses<=max_age]
     
-    if debug:
-       print('Ending tracker_list: ',len(tracker_list))
-       print('Ending good tracker_list: ',len(good_tracker_list))
-    
-    cv2.imshow("frame",img)
+    #cv2.imshow("frame",img)
     return img
     
-if __name__ == "__main__":    
+if __name__ == "__main__":
+    SHUTDOWN = 37   
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(ECHO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(SHUTDOWN, GPIO.IN, GPIO.PUD_UP)
     steering = DualRelay(RELAY1, RELAY2, max_turning_time=5, delay=1)
+    motor = Motor(PWM=16, DIR=12)
     
     cam = PiCamera()
     cam.resolution = (imW, imH)
@@ -352,7 +340,7 @@ if __name__ == "__main__":
     for frame in cam.capture_continuous(rawCapture, format="bgr", use_video_port=True):
         try:
             img = frame.array
-            cv2.imshow("frame", img)
+            #cv2.imshow("frame", img)
             
             np.asarray(img)
             boxes = model.get_output(img)
@@ -363,14 +351,16 @@ if __name__ == "__main__":
             rawCapture.truncate(0)
 
             #print(f"Distance: {dist}cm")
-
-            if cv2.waitKey(1) & 0xFF == ord("q"):
+            cv2.waitKey(1)
+            if not GPIO.input(SHUTDOWN):
                 break
         except Exception as e:
-            print(str(repr(e)))
+            with open(f"{os.path.abspath(os.path.dirname(__file__))}/log.txt", "w") as file:
+                file.write(str(repr(e)))
             break
     
-    stop_measure = True
-    cam.close()
-    cv2.destroyAllWindows()
-    GPIO.cleanup()
+stop_measure = True
+cam.close()
+cv2.destroyAllWindows()
+GPIO.cleanup()
+#subprocess.call("sudo shutdown now", shell=True)

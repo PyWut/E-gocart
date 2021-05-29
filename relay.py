@@ -44,22 +44,29 @@ class DualRelay:
 				self.stop()
 		self.track_pos["old_time"] = time.time() 
 
+	def to_center(self):
+		if self.track_pos["current_pos"] < -0.5:
+			self.right()
+		elif self.track_pos["current_pos"] > 0.5:
+			self.left()
+
 	def update(self, x):
 		self.check_pos()
-		if 280 <= x <= 360:
-			print("midden")
-			if not GPIO.input(self.r1) or not GPIO.input(self.r2):
-				self.stop()
-		elif x > 360 and self.track_pos["current_pos"] < self.max_right:
-			print("rechts")
+		if 260 <= x <= 380:
+			if -0.5 < self.track_pos["current_pos"] < 0.5:
+				if not GPIO.input(self.r1) or not GPIO.input(self.r2):
+					self.stop()
+			else:
+				self.to_center()
+		elif x > 380 and self.track_pos["current_pos"] < self.max_right:
 			if GPIO.input(self.r2):
 				if time.time() - self.track_pos["last_turned_off"] > self.delay:
 					self.right()
-		elif x < 280:
-			print("links")
+		elif x < 260:
 			if GPIO.input(self.r1) and self.track_pos["current_pos"] > self.max_left:
 				if time.time() - self.track_pos["last_turned_off"] > self.delay:
 					self.left()
+
 
 if __name__ == "__main__":
 	relay1 = 29
@@ -68,14 +75,25 @@ if __name__ == "__main__":
 	GPIO.setmode(GPIO.BOARD)
 	steering = DualRelay(relay1, relay2, max_turning_time=5, delay=1)
 	"""
-	try:
-		for i in range(10):
-			steering.update(randint(0, 640))
-			time.sleep(1)
-	except KeyboardInterrupt:
-		pass
-	"""
+	steering.right()
+	time.sleep(4)
+	steering.stop()
+	time.sleep(2)
+	
 	steering.left()
-	time.sleep(1)
+	time.sleep(4)
+	
+	steering.stop()
+	time.sleep(2)
+	steering.right()
+	time.sleep(4)
+	steering.stop()
+	time.sleep(2)
+
+	steering.left()
+	time.sleep(4)
+	"""
+	steering.right()
+	time.sleep(2)	
 	steering.stop()
 	GPIO.cleanup()
